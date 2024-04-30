@@ -362,7 +362,7 @@ const buscarDados = (dataSolicitacaoInicial, dataSolicitacaoFinal, baixarTudo) =
             console.error('Nenhuma ocorrência de <tbody> encontrada na resposta.');
         }
     })
-    .catch(error => {
+    .catch(error => {   
         console.error('Erro:', error);
     });
 };

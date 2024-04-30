@@ -162,7 +162,7 @@ const fazerRequisicaoPOST = async (dataInicio, dataFinal, atualizarProgresso) =>
                     } else {
                         // Incrementar o total de requisições bem-sucedidas
                         totalRequisicoesBemSucedidas = totalRequisicoesBemSucedidas + 1;
-                    }
+                    }   
                 } else if (divElementSucess.textContent.includes("Solicitação enviada com sucesso.")) {
                             console.log('Conteúdo da div de sucesso:', divElementSucess.textContent);
                             // Incrementar o total de requisições bem-sucedidas
