@@ -417,59 +417,49 @@ const criarLogDownloads = (sucessos, falhas) => {
     saveAs(blob, 'log_downloads.txt');
 };
 
+// Arrays para armazenar os downloads bem-sucedidos e falhados
+const downloadsBemSucedidos = [];
+const downloadsFalhados = [];
+
 // Função para criar as requisições de download
-const criaRequestDownload = (info) => {
-    let downloadsBemSucedidos = [];
-    let downloadsFalhados = [];
+const criaRequestDownload = async (info) => {
+    try {
+        await loadFileSaver(); // Aguarda o carregamento do FileSaver.js
 
-    loadFileSaver();
-
-    // Percorre os dados e faz requisições assíncronas para os links de solicitação encontrados
-    Promise.all(info.map(item => {
-        if (item.linkSolicitacao) {
-            return fetch(item.linkSolicitacao)
-                .then(response => {
+        // Promise que será resolvida quando todos os downloads forem concluídos
+        const allDownloads = info.map(async (item) => {
+            if (item.linkSolicitacao) {
+                try {
+                    const response = await fetch(item.linkSolicitacao);
                     if (!response.ok) {
-                        downloadsFalhados.push(item);
                         throw new Error('Erro ao baixar arquivo: ' + response.status);
                     }
-                    return response.arrayBuffer(); // Retorna o conteúdo do arquivo como ArrayBuffer
-                })
-                .then(arrayBuffer => {
-                    // Cria um Blob a partir do ArrayBuffer
+                    const arrayBuffer = await response.arrayBuffer();
                     const blob = new Blob([arrayBuffer], { type: 'application/octet-stream' });
-
-                    // Obtém apenas o nome do arquivo a partir do código de solicitação
                     const fileName = `${item.codigoSolicitacao}.zip`;
-
-                    // Cria um URL temporário para o Blob
                     const url = window.URL.createObjectURL(blob);
-
-                    // Cria um link para fazer o download
                     const link = document.createElement('a');
                     link.href = url;
-                    link.download = fileName; // Define o nome do arquivo
+                    link.download = fileName;
                     document.body.appendChild(link);
-
-                    // Simula o clique no link para iniciar o download
                     link.click();
-
-                    // Limpa o URL temporário
                     window.URL.revokeObjectURL(url);
-
-                    // Adiciona à lista de downloads bem-sucedidos
                     downloadsBemSucedidos.push(item);
-                })
-                .catch(error => {
+                } catch (error) {
                     console.error('Erro ao baixar arquivo:', error);
                     downloadsFalhados.push(item);
-                });
-        }
-    })).then(() => {
-        // Após todos os downloads, cria o log e salva em um arquivo .txt
-        const log = criarLogDownloads(downloadsBemSucedidos, downloadsFalhados);
-        salvarLog(log);
-    });
+                }
+            }
+        });
+
+        // Aguarda o término de todas as requisições de download
+        await Promise.all(allDownloads);
+
+        // Cria o log após os downloads
+        criarLogDownloads(downloadsBemSucedidos, downloadsFalhados);
+    } catch (error) {
+        console.error('Erro ao carregar FileSaver.js:', error);
+    }
 };
 
 // Chama a função para criar a caixa de diálogo ao carregar a página
