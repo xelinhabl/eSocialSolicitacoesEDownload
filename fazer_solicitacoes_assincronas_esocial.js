@@ -5,26 +5,33 @@ const todasRequisicoes = [];
 
 // Função para fazer a requisição Brasil API
 const requisitarBrasilAPI = async (cnpjEmpresaEsocial) => {
-    try {
-        const response = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpjEmpresaEsocial}`);
-        if (response.status === 200) {
-            const data = await response.json();
-            const dataInicioAtividade = data?.data_inicio_atividade;
-            if (dataInicioAtividade) {
-                return formatarData(dataInicioAtividade);
-            } else {
-                console.error('Data de início de atividade não encontrada na resposta da API:', data);
-                return null;
-            }
-        } else {
-            console.error('Erro na requisição para a API BrasilAPI:', response.status);
-            return requisitarSpeedioAPI(cnpjEmpresaEsocial);
-        }
-        
-    } catch (error) {
-        console.error('Erro ao requisitar Brasil API:', error);
+
+    if(cnpjEmpresaEsocial.length <= 12){
         // Se ocorrer um erro na requisição ou nenhum dado for retornado, continue sem interrupção
+        console.log("Como é CPF usa data de abertura sempre 01/01/2018");
         return '01/01/2018';
+    }else{
+        try {
+            const response = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpjEmpresaEsocial}`);
+            if (response.status === 200) {
+                const data = await response.json();
+                const dataInicioAtividade = data?.data_inicio_atividade;
+                if (dataInicioAtividade) {
+                    return formatarData(dataInicioAtividade);
+                } else {
+                    console.error('Data de início de atividade não encontrada na resposta da API:', data);
+                    return null;
+                }
+            } else {
+                console.error('Erro na requisição para a API BrasilAPI:', response.status);
+                return requisitarSpeedioAPI(cnpjEmpresaEsocial);
+            }
+            
+        } catch (error) {
+            console.error('Erro ao requisitar Brasil API:', error);
+            // Se ocorrer um erro na requisição ou nenhum dado for retornado, continue sem interrupção
+            return '01/01/2018';
+        }
     }
 };
 
@@ -332,6 +339,7 @@ const criarDialogoData = async () => {
     document.body.appendChild(loadingMessage);
 
     const cnpjEmpresaEsocial = formataCNPJ();
+
     const dataInicioAtividade = await requisitarBrasilAPI(cnpjEmpresaEsocial);
     
     // Remove a mensagem de carregamento após a conclusão da requisição
