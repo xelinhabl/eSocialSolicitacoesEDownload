@@ -1,3 +1,14 @@
+// Função para carregar o FileSaver.js dinamicamente
+const loadFileSaver = () => {
+    return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js';
+        script.onload = resolve;
+        script.onerror = reject;
+        document.body.appendChild(script);
+    });
+};
+
 // Função para criar a caixa de diálogo de entrada de datas
 const criarDialogoData = () => {
     // Cria a caixa de diálogo
@@ -367,14 +378,59 @@ const buscarDados = (dataSolicitacaoInicial, dataSolicitacaoFinal, baixarTudo) =
     });
 };
 
+// Função para salvar o log em um arquivo .txt
+const salvarLog = (log) => {
+    const blob = new Blob([log], { type: 'text/plain;charset=utf-8' });
+    saveAs(blob, 'log_download.txt');
+};
+
+// Função para criar o log de downloads
+const criarLogDownloads = (sucessos, falhas) => {
+    const totalSucessos = sucessos.length;
+    const totalFalhas = falhas.length;
+    const totalDownloads = totalSucessos + totalFalhas;
+
+    const log = `Total de downloads: ${totalDownloads}\n`;
+    const logSucessos = `Downloads bem-sucedidos: ${totalSucessos}\n`;
+    const logFalhas = `Downloads falhados: ${totalFalhas}\n`;
+
+    let logDetalhesSucessos = '';
+    if (totalSucessos > 0) {
+        logDetalhesSucessos = '\nDownloads bem-sucedidos:\n';
+        sucessos.forEach(download => {
+            logDetalhesSucessos += `${download.codigoSolicitacao}.zip\n`;
+        });
+    }
+
+    let logDetalhesFalhas = '';
+    if (totalFalhas > 0) {
+        logDetalhesFalhas = '\nDownloads falhados:\n';
+        falhas.forEach(download => {
+            logDetalhesFalhas += `${download.codigoSolicitacao}.zip\n`;
+        });
+    }
+
+    const logCompleto = log + logSucessos + logFalhas + logDetalhesSucessos + logDetalhesFalhas;
+
+    // Salva o log como arquivo .txt
+    const blob = new Blob([logCompleto], { type: 'text/plain;charset=utf-8' });
+    saveAs(blob, 'log_downloads.txt');
+};
+
 // Função para criar as requisições de download
 const criaRequestDownload = (info) => {
+    let downloadsBemSucedidos = [];
+    let downloadsFalhados = [];
+
+    loadFileSaver();
+
     // Percorre os dados e faz requisições assíncronas para os links de solicitação encontrados
-    info.forEach(item => {
+    Promise.all(info.map(item => {
         if (item.linkSolicitacao) {
-            fetch(item.linkSolicitacao)
+            return fetch(item.linkSolicitacao)
                 .then(response => {
                     if (!response.ok) {
+                        downloadsFalhados.push(item);
                         throw new Error('Erro ao baixar arquivo: ' + response.status);
                     }
                     return response.arrayBuffer(); // Retorna o conteúdo do arquivo como ArrayBuffer
@@ -400,11 +456,19 @@ const criaRequestDownload = (info) => {
 
                     // Limpa o URL temporário
                     window.URL.revokeObjectURL(url);
+
+                    // Adiciona à lista de downloads bem-sucedidos
+                    downloadsBemSucedidos.push(item);
                 })
                 .catch(error => {
                     console.error('Erro ao baixar arquivo:', error);
+                    downloadsFalhados.push(item);
                 });
         }
+    })).then(() => {
+        // Após todos os downloads, cria o log e salva em um arquivo .txt
+        const log = criarLogDownloads(downloadsBemSucedidos, downloadsFalhados);
+        salvarLog(log);
     });
 };
 
