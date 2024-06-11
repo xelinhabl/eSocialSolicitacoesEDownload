@@ -416,9 +416,12 @@ const criarDialogoData = async () => {
             return;
         }
         
-        if (diasBuscar > 31 || diasBuscar < 1) {
-            alert('Por favor, informe um número de dias válido entre 1 e 31.');
-            return;
+        if(diasBuscar == null || diasBuscar == undefined || diasBuscar == "" ){
+            console.log("Vai continuar o processamento")
+        }else{
+            if(diasBuscar < 1 || diasBuscar > 31){
+                console.log('Os dias para buscar deve estar entre 1 e 31')
+            }
         }
     
         document.body.removeChild(dialogo);
