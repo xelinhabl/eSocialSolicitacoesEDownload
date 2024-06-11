@@ -164,7 +164,7 @@ const fazerRequisicaoPOST = async (dataInicio, dataFinal, atualizarProgresso) =>
                     // Verificar se o pedido foi aceito ou não com base no conteúdo da div
                     if (divElement.textContent.includes("Pedido não foi aceito. Já existe um pedido do mesmo tipo.")) {
                         totalRequisicoesComErro = totalRequisicoesComErro + 1 ;
-                    } else if (divElement.textContent.includes("O limite de solicitações foi alcançado. Somente é permitido 72 solicitações por dia.")) {
+                    } else if (divElement.textContent.includes("O limite de solicitações foi alcançado. Somente é permitido 100 solicitações por dia.")) {
                         totalAtingido = totalAtingido + 1;
                     } else {
                         // Incrementar o total de requisições bem-sucedidas
@@ -253,62 +253,6 @@ const salvarRespostas = async () => {
     }
 };
 
-const gerarRequisicoes = async (dataInicial, dataFinal, mesesBuscar, dataCorte, atualizarProgresso) => {
-    let dataInicio = new Date(dataInicial);
-    let dataFim = new Date(dataFinal);
-    
-    // Verifica se a data de final é maior que a data de corte
-    if (dataFim > dataCorte) {
-        dataFim = dataCorte;
-    }
-
-    const intervaloDias = 30 * mesesBuscar;
-    let dataFinalRequisicao = new Date(dataInicio.getTime() + intervaloDias * 24 * 60 * 60 * 1000);
-    const totalDias = Math.ceil((dataFim - dataInicio) / (1000 * 60 * 60 * 24));
-
-    let percentual = 0;
-
-    // Ajuste para garantir que o número total de requisições seja arredondado para cima
-    const totalRequisicoes = Math.ceil(totalDias / 31);
-
-    let requestsConcluidas = 0;
-
-    // Garante que a data fim não vai ser ultrapassada
-    if (dataFinalRequisicao > dataFim){
-        dataFinalRequisicao = dataFim;
-    }
-
-    const promises = [];
-
-    while (dataInicio < dataFim) {
-        promises.push(fazerRequisicaoPOST(dataInicio, dataFinalRequisicao, () => {
-            requestsConcluidas++;
-            percentual = Math.ceil((requestsConcluidas / totalRequisicoes) * 100);
-            // Limita o percentual a 100%
-            if (percentual > 100) {
-                percentual = 100;
-            }
-            atualizarProgresso(percentual);
-        }));
-        dataInicio = new Date(dataFinalRequisicao.getTime() + (24 * 60 * 60 * 1000));
-        dataFinalRequisicao = new Date(dataInicio.getTime() + intervaloDias * 24 * 60 * 60 * 1000);
-        if (dataFinalRequisicao > dataFim) {
-            dataFinalRequisicao = dataFim;
-        }
-    }
-
-    await Promise.all(promises);
-
-    // Corrige o percentual para 100% ao finalizar todas as requisições
-    percentual = 100;
-    atualizarProgresso(percentual);
-    
-    // Espera 10 segundos antes de chamar a função salvarRespostas()
-    setTimeout(() => {
-        salvarRespostas();
-    }, 10000); // 10000 milissegundos = 10 segundos
-    
-};
 
 const verificarFormatoData = (data) => {
     // Expressão regular para o formato DD/MM/AAAA
@@ -365,6 +309,16 @@ const criarDialogoData = async () => {
     dialogo.style.boxShadow = '0 16px 24px rgba(0, 0, 0, 0.1)';
     dialogo.style.textAlign = 'center';
 
+    // Cria o cabeçalho da dialogBox para movimentação
+    const dialogoHeader = document.createElement('div');
+    dialogoHeader.style.cursor = 'move';
+    dialogoHeader.style.padding = '10px';
+    dialogoHeader.style.backgroundColor = '#f1f1f1';
+    dialogoHeader.style.borderBottom = '2px solid #ccc';
+    dialogoHeader.style.borderTopLeftRadius = '25px';
+    dialogoHeader.style.borderTopRightRadius = '25px';
+    dialogo.appendChild(dialogoHeader);
+
     const botaoFechar = document.createElement('span');
     botaoFechar.textContent = 'X';
     botaoFechar.style.position = 'absolute';
@@ -377,7 +331,7 @@ const criarDialogoData = async () => {
     botaoFechar.addEventListener('click', () => {
         document.body.removeChild(dialogo);
     });
-    dialogo.appendChild(botaoFechar);
+    dialogoHeader.appendChild(botaoFechar);
 
     const labelCabecalho = document.createElement('label');
     labelCabecalho.textContent = 'Insira o range para criar as Solicitações';
@@ -398,6 +352,9 @@ const criarDialogoData = async () => {
     $(inputDataInicial).inputmask({ alias: 'date' });
 
     const quebraDeLinha2 = document.createElement('br');
+    const quebraDeLinha0 = document.createElement('br');
+    const quebraDeLinha7 = document.createElement('br');
+    const quebraDeLinha8 = document.createElement('br');
 
     const labelDataFinal = document.createElement('label');
     labelDataFinal.textContent = 'Data final (DD/MM/AAAA):         ';
@@ -437,13 +394,30 @@ const criarDialogoData = async () => {
 
     const quebraDeLinha3 = document.createElement('br');
 
+    const labelDiasBuscar = document.createElement('label');
+    labelDiasBuscar.textContent = 'Dias a Buscar (min. 1 dia - max. 31 dias.): ';
+    const inputDiasBuscar = document.createElement('input');
+    inputDiasBuscar.type = 'number';
+    inputDiasBuscar.id = 'diasBuscarInput';
+    inputDiasBuscar.style.marginRight = '40px';
+    inputDiasBuscar.min = '1';
+    inputDiasBuscar.max = '31';
+
+    const quebraDeLinha6 = document.createElement('br');
+
     botaoSolicitar.addEventListener('click', () => {
         const dataInicial = document.getElementById('dataInicialInput').value;
         const dataFinal = document.getElementById('dataFinalInput').value;
         const mesesBuscar = document.getElementById('mesesBuscarInput').value;
+        const diasBuscar = document.getElementById('diasBuscarInput').value;
     
         if (!dataInicial || !dataFinal) {
             alert('Por favor, informe ambas as datas.');
+            return;
+        }
+        
+        if (diasBuscar > 31 || diasBuscar < 1) {
+            alert('Por favor, informe um número de dias válido entre 1 e 31.');
             return;
         }
     
@@ -455,7 +429,11 @@ const criarDialogoData = async () => {
         const barraProgresso = criarBarraProgresso();
     
         // Chame gerarRequisicoes com a data de corte como parâmetro
-        gerarRequisicoes(dataInicialFormatada, dataFinalFormatada, mesesBuscar, dataCorteSolicitacao, barraProgresso);
+        if (diasBuscar && diasBuscar <= 31) {
+            gerarRequisicoes(dataInicialFormatada, dataFinalFormatada, 0, dataCorteSolicitacao, barraProgresso, diasBuscar);
+        } else {
+            gerarRequisicoes(dataInicialFormatada, dataFinalFormatada, mesesBuscar, dataCorteSolicitacao, barraProgresso);
+        }
     });
 
     const criarBarraProgresso = () => {
@@ -471,6 +449,16 @@ const criarDialogoData = async () => {
         barraProgresso.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.2)';
         barraProgresso.style.zIndex = '9999';
         barraProgresso.style.fontSize = '17px';
+        
+        // Cria o cabeçalho da barra de progresso para movimentação
+        const barraProgressoHeader = document.createElement('div');
+        barraProgressoHeader.style.cursor = 'move';
+        barraProgressoHeader.style.padding = '10px';
+        barraProgressoHeader.style.backgroundColor = '#f1f1f1';
+        barraProgressoHeader.style.borderBottom = '2px solid #ccc';
+        barraProgressoHeader.style.borderTopLeftRadius = '25px';
+        barraProgressoHeader.style.borderTopRightRadius = '25px';
+        barraProgresso.appendChild(barraProgressoHeader);
     
         const progressoTexto = document.createElement('span');
         progressoTexto.textContent = 'Progresso: 0%';
@@ -501,7 +489,7 @@ const criarDialogoData = async () => {
         barraProgresso.appendChild(progressoTexto);
         barraProgresso.appendChild(progressBar);
         barraProgresso.appendChild(botaoFechar);
-    
+
         document.body.appendChild(barraProgresso);
 
         const linhaSucesso = document.createElement('div');
@@ -525,6 +513,7 @@ const criarDialogoData = async () => {
             linha72RequestAtingida.textContent = 'Total de requisições por dia atingido 72 request. Solicitações com erro : ' + totalAtingido;
         };
     
+        tornarDialogoMovel(barraProgresso, barraProgressoHeader);
         return atualizarProgresso;
     };
 
@@ -534,43 +523,48 @@ const criarDialogoData = async () => {
 
     const quebraDeLinha5 = document.createElement('br');
 
-    dialogo.appendChild(botaoFechar);
     dialogo.appendChild(labelCabecalho);
     dialogo.appendChild(quebraDeLinha1);
     dialogo.appendChild(labelDataInicial);
     dialogo.appendChild(inputDataInicial);
     dialogo.appendChild(quebraDeLinha2);
+    dialogo.appendChild(quebraDeLinha0);
     dialogo.appendChild(labelDataFinal);
     dialogo.appendChild(inputDataFinal);
     dialogo.appendChild(quebraDeLinha4);
+    dialogo.appendChild(quebraDeLinha8);
     dialogo.appendChild(labelMesesBuscar);
     dialogo.appendChild(selectMesesBuscar);
     dialogo.appendChild(quebraDeLinha3);
+    dialogo.appendChild(quebraDeLinha7);
+    dialogo.appendChild(labelDiasBuscar);
+    dialogo.appendChild(inputDiasBuscar);
+    dialogo.appendChild(quebraDeLinha6);
     dialogo.appendChild(botaoSolicitar);
     dialogo.appendChild(quebraDeLinha5);
     dialogo.appendChild(linhaInformativa);
 
     document.body.appendChild(dialogo);
 
-    // Função para tornar a dialogBox móvel
-    function tornarDialogoMovel(dialogo) {
+    // Função para tornar um elemento móvel ao clicar e arrastar o cabeçalho
+    function tornarDialogoMovel(dialogo, dialogoHeader) {
         let posicaoInicialX, posicaoInicialY, posicaoFinalX, posicaoFinalY;
         let dragAtivo = false;
 
-        // Adiciona evento de mouse pressionado
-        dialogo.addEventListener('mousedown', (e) => {
+        // Adiciona evento de mouse pressionado no cabeçalho
+        dialogoHeader.addEventListener('mousedown', (e) => {
             dragAtivo = true;
             posicaoInicialX = e.clientX;
             posicaoInicialY = e.clientY;
         });
 
         // Adiciona evento de mouse solto
-        dialogo.addEventListener('mouseup', () => {
+        document.addEventListener('mouseup', () => {
             dragAtivo = false;
         });
 
         // Adiciona evento de mouse movendo
-        dialogo.addEventListener('mousemove', (e) => {
+        document.addEventListener('mousemove', (e) => {
             if (dragAtivo) {
                 e.preventDefault();
                 posicaoFinalX = posicaoInicialX - e.clientX;
@@ -584,17 +578,92 @@ const criarDialogoData = async () => {
     }
 
     // Chama a função para tornar a dialogBox móvel
-    tornarDialogoMovel(dialogo);
+    tornarDialogoMovel(dialogo, dialogoHeader);
 
     if (dataFormatadaFinal) {
         inputDataInicial.value = dataFormatadaFinal;
         inputDataFinal.value = dataCorteSolicitacao;
+
+        // Se os campos já estiverem preenchidos, permita pressionar Enter
+        const verificarEnterPress = (event) => {
+            if (event.key === 'Enter') {
+                botaoSolicitar.click();
+            }
+        };
+        document.addEventListener('keydown', verificarEnterPress);
     }
 
     // Chama a função para começar a verificar
     verificarBotaoRenovarSessao();
+
+    // Adiciona eventos de teclado para executar o botão ao pressionar Enter
+    const executarAoPressionarEnter = (event) => {
+        if (event.key === 'Enter') {
+            botaoSolicitar.click();
+        }
+    };
+
+    inputDataInicial.addEventListener('keydown', executarAoPressionarEnter);
+    inputDataFinal.addEventListener('keydown', executarAoPressionarEnter);
+    inputDiasBuscar.addEventListener('keydown', executarAoPressionarEnter);
 };
 
+const gerarRequisicoes = async (dataInicial, dataFinal, mesesBuscar, dataCorte, atualizarProgresso, diasBuscar = 0) => {
+    let dataInicio = new Date(dataInicial);
+    let dataFim = new Date(dataFinal);
+    
+    // Verifica se a data de final é maior que a data de corte
+    if (dataFim > dataCorte) {
+        dataFim = dataCorte;
+    }
+
+    const intervaloDias = diasBuscar > 0 ? diasBuscar : 30 * mesesBuscar;
+    let dataFinalRequisicao = new Date(dataInicio.getTime() + intervaloDias * 24 * 60 * 60 * 1000);
+    const totalDias = Math.ceil((dataFim - dataInicio) / (1000 * 60 * 60 * 24));
+
+    let percentual = 0;
+
+    // Ajuste para garantir que o número total de requisições seja arredondado para cima
+    const totalRequisicoes = Math.ceil(totalDias / intervaloDias);
+
+    let requestsConcluidas = 0;
+
+    // Garante que a data fim não vai ser ultrapassada
+    if (dataFinalRequisicao > dataFim){
+        dataFinalRequisicao = dataFim;
+    }
+
+    const promises = [];
+
+    while (dataInicio < dataFim) {
+        promises.push(fazerRequisicaoPOST(dataInicio, dataFinalRequisicao, () => {
+            requestsConcluidas++;
+            percentual = Math.ceil((requestsConcluidas / totalRequisicoes) * 100);
+            // Limita o percentual a 100%
+            if (percentual > 100) {
+                percentual = 100;
+            }
+            atualizarProgresso(percentual);
+        }));
+        dataInicio = new Date(dataFinalRequisicao.getTime() + (24 * 60 * 60 * 1000));
+        dataFinalRequisicao = new Date(dataInicio.getTime() + intervaloDias * 24 * 60 * 60 * 1000);
+        if (dataFinalRequisicao > dataFim) {
+            dataFinalRequisicao = dataFim;
+        }
+    }
+
+    await Promise.all(promises);
+
+    // Corrige o percentual para 100% ao finalizar todas as requisições
+    percentual = 100;
+    atualizarProgresso(percentual);
+    
+    // Espera 10 segundos antes de chamar a função salvarRespostas()
+    setTimeout(() => {
+        salvarRespostas();
+    }, 10000); // 10000 milissegundos = 10 segundos
+    
+};
 
 
 const converterStringParaData = (dataString) => {
