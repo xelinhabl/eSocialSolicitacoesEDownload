@@ -384,12 +384,29 @@ const salvarLog = (log) => {
     saveAs(blob, 'log_download.txt');
 };
 
+buscarCNPJEmpresa = () => {
+    const perfisUsuario = document.querySelectorAll('.tipo-perfil-usuario');
+    for (let perfil of perfisUsuario) {
+        if (perfil.textContent.trim() === 'Empregador:') {
+            const bloco = perfil.nextElementSibling;
+            if (bloco) {
+                cnpjFormatado = bloco.textContent.replace(/\D/g, '');
+                return cnpjFormatado.trim();
+            }
+        }
+    }
+    return 'CNPJ não encontrado';
+}
+
 // Função para criar o log de downloads
 const criarLogDownloads = (sucessos, falhas) => {
     const totalSucessos = sucessos.length;
     const totalFalhas = falhas.length;
     const totalDownloads = totalSucessos + totalFalhas;
+    const empresaCNPJ = buscarCNPJEmpresa();
 
+
+    const cnpjEmpresa = `CNPJ da empresa : ${empresaCNPJ}\n`;
     const log = `Total de downloads: ${totalDownloads}\n`;
     const logSucessos = `Downloads bem-sucedidos: ${totalSucessos}\n`;
     const logFalhas = `Downloads falhados: ${totalFalhas}\n`;
@@ -410,7 +427,7 @@ const criarLogDownloads = (sucessos, falhas) => {
         });
     }
 
-    const logCompleto = log + logSucessos + logFalhas + logDetalhesSucessos + logDetalhesFalhas;
+    const logCompleto = cnpjEmpresa + log + logSucessos + logFalhas + logDetalhesSucessos + logDetalhesFalhas;
 
     // Salva o log como arquivo .txt
     const blob = new Blob([logCompleto], { type: 'text/plain;charset=utf-8' });
