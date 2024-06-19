@@ -5,12 +5,10 @@ const todasRequisicoes = [];
 
 // Função para fazer a requisição Brasil API
 const requisitarBrasilAPI = async (cnpjEmpresaEsocial) => {
-
-    if(cnpjEmpresaEsocial.length <= 12){
-        // Se ocorrer um erro na requisição ou nenhum dado for retornado, continue sem interrupção
+    if (cnpjEmpresaEsocial.length <= 12) {
         console.log("Como é CPF usa data de abertura sempre 01/01/2018");
         return '01/01/2018';
-    }else{
+    } else {
         try {
             const response = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpjEmpresaEsocial}`);
             if (response.status === 200) {
@@ -26,10 +24,8 @@ const requisitarBrasilAPI = async (cnpjEmpresaEsocial) => {
                 console.error('Erro na requisição para a API BrasilAPI:', response.status);
                 return requisitarSpeedioAPI(cnpjEmpresaEsocial);
             }
-            
         } catch (error) {
             console.error('Erro ao requisitar Brasil API:', error);
-            // Se ocorrer um erro na requisição ou nenhum dado for retornado, continue sem interrupção
             return '01/01/2018';
         }
     }
@@ -40,9 +36,8 @@ const requisitarSpeedioAPI = async (cnpjEmpresaEsocial) => {
         const response = await fetch(`https://api-publica.speedio.com.br/buscarcnpj?cnpj=${cnpjEmpresaEsocial}`);
         const data = await response.json();
         const dataAbertura = data?.['DATA ABERTURA'];
-
         if (dataAbertura) {
-            return dataAbertura
+            return dataAbertura;
         } else {
             console.error('Data de abertura não encontrada na resposta da segunda API:', data);
             return null;
@@ -56,61 +51,30 @@ const requisitarSpeedioAPI = async (cnpjEmpresaEsocial) => {
 const formataCNPJ = () => {
     const nrCNPJ = document.getElementsByClassName('numero-inscricao');
     const valor = nrCNPJ[0].innerText;
-    var valorFormatado = valor.replace(/\D/g, '');
-    return valorFormatado;
+    return valor.replace(/\D/g, '');
 };
 
-const verificaDataInicioAtividade = (dataFormatadaFinal) => {
-    const dataString1 = dataFormatadaFinal;
-    const dataString2 = '01/01/2018';
-
-    const converterStringParaData = (dataString) => {
-        const partes = dataString.split('/');
-        const dia = partes[0] === 'undefined' ? 1 : parseInt(partes[0], 10);
-        const mes = partes[1] === 'undefined' ? 1 : parseInt(partes[1], 10) - 1;
-        const ano = parseInt(partes[2], 10);
-        return new Date(ano, mes, dia);
-    };
-
-    const formatarDataParaString = (data) => {
-        const dia = String(data.getDate()).padStart(2, '0');
-        const mes = String(data.getMonth() + 1).padStart(2, '0');
-        const ano = data.getFullYear();
-        return `${dia}/${mes}/${ano}`;
-    };
-
-    const data1 = converterStringParaData(dataString1);
-    const data2 = converterStringParaData(dataString2);
-
-    if (data1 >= data2) {
-        console.log(`${dataString1} é maior ou igual a ${dataString2}`);
-        const dataFormatada = formatarDataParaString(data1);
-        dataFormatadaFinal = dataFormatada;
-    } else {
-        const dataFormatada = formatarDataParaString(data2);
-        dataFormatadaFinal = dataFormatada;
-        console.log(`${dataString1} não é maior ou igual a ${dataString2}`);
-    }
-    return dataFormatadaFinal;
+const converterStringParaData = (dataString) => {
+    const partes = dataString.split('/');
+    const dia = parseInt(partes[0], 10);
+    const mes = parseInt(partes[1], 10) - 1; // Mês começa do 0 em JavaScript
+    const ano = parseInt(partes[2], 10);
+    return new Date(ano, mes, dia);
 };
 
 const formatarData = (data) => {
-    if (!data || typeof data !== 'string') return null; // Verifica se a data está definida e é uma string
-
-    // Divide a string da data em partes separadas por "-"
+    if (!data || typeof data !== 'string') return null;
     const partes = data.split('-');
-    
-    // Extrai o ano, mês e dia das partes
-    const ano = partes[0];
-    const mes = partes[1];
-    const dia = partes[2];
+    return `${partes[2]}/${partes[1]}/${partes[0]}`;
+};
 
-    // Retorna a data formatada no formato "DD/MM/AAAA"
-    return `${dia}/${mes}/${ano}`;
+const verificaDataInicioAtividade = (dataFormatadaFinal) => {
+    const data1 = converterStringParaData(dataFormatadaFinal);
+    const data2 = converterStringParaData('01/01/2018');
+    return data1 >= data2 ? dataFormatadaFinal : '01/01/2018';
 };
 
 const fazerRequisicaoPOST = async (dataInicio, dataFinal, atualizarProgresso) => {
-    // Função para formatar a data no formato DD/MM/AAAA
     const formatarDataParaString = (data) => {
         const dia = String(data.getDate()).padStart(2, '0');
         const mes = String(data.getMonth() + 1).padStart(2, '0');
@@ -137,7 +101,7 @@ const fazerRequisicaoPOST = async (dataInicio, dataFinal, atualizarProgresso) =>
     let totalRequisicoesProcessadas = 0;
 
     try {
-        const originalRequest = fetch('https://www.esocial.gov.br/portal/download/Pedido/Solicitacao', {
+        const response = await fetch('https://www.esocial.gov.br/portal/download/Pedido/Solicitacao', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -145,73 +109,56 @@ const fazerRequisicaoPOST = async (dataInicio, dataFinal, atualizarProgresso) =>
             body: JSON.stringify(dados),
             redirect: 'manual'
         });
-        
-        const responses = await Promise.all([originalRequest]);
 
-        responses.forEach(async response => {
-            console.log(response);
+        console.log(response);
 
-            if (response.status === 200) {
-                console.log('Requisição original bem-sucedida:', response.status);
-                // Ler o conteúdo HTML da resposta
-                const htmlContent = await response.text();
-                // Analisar o HTML para extrair informações
-                const divElement = new DOMParser().parseFromString(htmlContent, 'text/html')
-                    .querySelector('.fade-alert.alert.alert-danger.retornoServidor');
-                const divElementSucess = new DOMParser().parseFromString(htmlContent, 'text/html').querySelector('.fade-alert.alert.alert-success.retornoServidor');
-                if (divElement) {
-                    console.log('Conteúdo da div de erro:', divElement.textContent);
-                    // Verificar se o pedido foi aceito ou não com base no conteúdo da div
-                    if (divElement.textContent.includes("Pedido não foi aceito. Já existe um pedido do mesmo tipo.")) {
-                        totalRequisicoesComErro = totalRequisicoesComErro + 1 ;
-                    } else if (divElement.textContent.includes("O limite de solicitações foi alcançado. Somente é permitido 100 solicitações por dia.")) {
-                        totalAtingido = totalAtingido + 1;
-                    } else {
-                        // Incrementar o total de requisições bem-sucedidas
-                        totalRequisicoesBemSucedidas = totalRequisicoesBemSucedidas + 1;
-                    }   
-                } else if (divElementSucess.textContent.includes("Solicitação enviada com sucesso.")) {
-                            console.log('Conteúdo da div de sucesso:', divElementSucess.textContent);
-                            // Incrementar o total de requisições bem-sucedidas
-                            totalRequisicoesBemSucedidas = totalRequisicoesBemSucedidas + 1;
+        if (response.status === 200) {
+            const htmlContent = await response.text();
+            const doc = new DOMParser().parseFromString(htmlContent, 'text/html');
+            const divElement = doc.querySelector('.fade-alert.alert.alert-danger.retornoServidor');
+            const divElementSucess = doc.querySelector('.fade-alert.alert.alert-success.retornoServidor');
+
+            if (divElement) {
+                console.log('Conteúdo da div de erro:', divElement.textContent);
+                if (divElement.textContent.includes("Pedido não foi aceito. Já existe um pedido do mesmo tipo.")) {
+                    totalRequisicoesComErro++;
+                } else if (divElement.textContent.includes("O limite de solicitações foi alcançado. Somente é permitido 100 solicitações por dia.")) {
+                    totalAtingido++;
                 } else {
-                    console.log('Div não encontrada no HTML');
-                    // Incrementar o total de requisições bem-sucedidas
-                    totalRequisicoesBemSucedidas = totalRequisicoesBemSucedidas + 1;
-                    
+                    totalRequisicoesBemSucedidas++;
                 }
-                // Salvar os detalhes da requisição no array todasRequisicoes
-                todasRequisicoes.push({
-                    dataInicio: formatarDataParaString(dataInicio),
-                    dataFinal: formatarDataParaString(dataFinal),
-                    resposta: divElement ? divElement.textContent.trim() : (divElementSucess ? divElementSucess.textContent.trim() : '') // Remover espaços em branco extras
-                });
+            } else if (divElementSucess && divElementSucess.textContent.includes("Solicitação enviada com sucesso.")) {
+                console.log('Conteúdo da div de sucesso:', divElementSucess.textContent);
+                totalRequisicoesBemSucedidas++;
             } else {
-                if(response.status == 0 && response.url == 'https://www.esocial.gov.br/portal/download/Pedido/Solicitacao'){
-                    // Incrementar o total de requisições bem-sucedidas
-                    totalRequisicoesBemSucedidas = totalRequisicoesBemSucedidas + 1;
-                }else{
-                    console.error('Erro na requisição original:', response.status);
-                    // Atualizar o total de requisições com erro
-                    totalRequisicoesComErro = totalRequisicoesComErro + 1;
-                }
-                // Salvar os detalhes da requisição no array todasRequisicoes
-                todasRequisicoes.push({
-                    dataInicio: formatarDataParaString(dataInicio),
-                    dataFinal: formatarDataParaString(dataFinal),
-                    resposta: 'Solicitação criada com sucesso ! '
-                });
+                console.log('Div não encontrada no HTML');
+                totalRequisicoesBemSucedidas++;
             }
-            // Incrementa o total de requisições processadas após o processamento de cada resposta
-            totalRequisicoesProcessadas = totalRequisicoesProcessadas + 1;
-            // Atualiza a barra de progresso após o loop completo
-            atualizarProgresso(totalRequisicoesProcessadas);
-        });
+
+            todasRequisicoes.push({
+                dataInicio: formatarDataParaString(dataInicio),
+                dataFinal: formatarDataParaString(dataFinal),
+                resposta: divElement ? divElement.textContent.trim() : (divElementSucess ? divElementSucess.textContent.trim() : '')
+            });
+        } else {
+            if (response.status === 0 && response.url === 'https://www.esocial.gov.br/portal/download/Pedido/Solicitacao') {
+                totalRequisicoesBemSucedidas++;
+            } else {
+                console.error('Erro na requisição original:', response.status);
+                totalRequisicoesComErro++;
+            }
+            todasRequisicoes.push({
+                dataInicio: formatarDataParaString(dataInicio),
+                dataFinal: formatarDataParaString(dataFinal),
+                resposta: 'Solicitação criada com sucesso!'
+            });
+        }
+
+        totalRequisicoesProcessadas++;
+        atualizarProgresso(totalRequisicoesProcessadas);
     } catch (error) {
-        // Atualizar o total de requisições com erro
         console.error('Erro ao fazer requisição:', error);
-        totalRequisicoesComErro = totalRequisicoesComErro + 1;
-        // Atualiza a barra de progresso em caso de erro
+        totalRequisicoesComErro++;
         atualizarProgresso(totalRequisicoesProcessadas);
     }
 };
@@ -230,7 +177,6 @@ const loadFileSaver = () => {
 // Função para salvar os detalhes das requisições em um arquivo de texto
 const salvarRespostas = async () => {
     try {
-        // Carregar o FileSaver.js dinamicamente
         await loadFileSaver();
 
         let texto = '';
@@ -243,30 +189,14 @@ const salvarRespostas = async () => {
             texto += `Resposta: ${requisicao.resposta}\n\n`;
         }
 
-        // Criar um Blob com o texto
         const blob = new Blob([texto], { type: 'text/plain' });
-
-        // Salvar o Blob como um arquivo de texto
         saveAs(blob, 'log_empresa_solicitacao.txt');
     } catch (error) {
         console.error('Erro ao carregar FileSaver.js:', error);
     }
 };
 
-
-const verificarFormatoData = (data) => {
-    // Expressão regular para o formato DD/MM/AAAA
-    const regex = /^(\d{2})\/(\d{2})\/(\d{4})$/;
-    // Verifica se a data corresponde ao padrão
-    if (regex.test(data)) {
-        return true; // Retorna verdadeiro se estiver no formato correto
-    } else {
-        return false; // Retorna falso se não estiver no formato correto
-    }
-};
-
 const criarDialogoData = async () => {
-    // Adiciona a mensagem de carregamento
     const loadingMessage = document.createElement('div');
     loadingMessage.textContent = 'Aguarde, buscando data de abertura da empresa...';
     loadingMessage.style.position = 'fixed';
@@ -279,17 +209,15 @@ const criarDialogoData = async () => {
     loadingMessage.style.borderRadius = '32px';
     loadingMessage.style.boxShadow = '0 16px 24px rgba(0, 0, 0, 0.1)';
     loadingMessage.style.textAlign = 'center';
-    
+
     document.body.appendChild(loadingMessage);
 
     const cnpjEmpresaEsocial = formataCNPJ();
-
     const dataInicioAtividade = await requisitarBrasilAPI(cnpjEmpresaEsocial);
-    
-    // Remove a mensagem de carregamento após a conclusão da requisição
+
     document.body.removeChild(loadingMessage);
 
-    if (verificarFormatoData(dataInicioAtividade)) {
+    if (formatarData(dataInicioAtividade)) {
         console.log('A data está no formato correto (DD/MM/AAAA)');
     } else {
         console.log('A data não está no formato correto (DD/MM/AAAA)');
@@ -309,7 +237,6 @@ const criarDialogoData = async () => {
     dialogo.style.boxShadow = '0 16px 24px rgba(0, 0, 0, 0.1)';
     dialogo.style.textAlign = 'center';
 
-    // Cria o cabeçalho da dialogBox para movimentação
     const dialogoHeader = document.createElement('div');
     dialogoHeader.style.cursor = 'move';
     dialogoHeader.style.padding = '10px';
@@ -410,28 +337,24 @@ const criarDialogoData = async () => {
         const dataFinal = document.getElementById('dataFinalInput').value;
         const mesesBuscar = document.getElementById('mesesBuscarInput').value;
         const diasBuscar = document.getElementById('diasBuscarInput').value;
-    
+
         if (!dataInicial || !dataFinal) {
             alert('Por favor, informe ambas as datas.');
             return;
         }
-        
-        if(diasBuscar == null || diasBuscar == undefined || diasBuscar == "" ){
-            console.log("Vai continuar o processamento")
-        }else{
-            if(diasBuscar < 1 || diasBuscar > 31){
-                console.log('Os dias para buscar deve estar entre 1 e 31')
-            }
+
+        if (diasBuscar && (diasBuscar < 1 || diasBuscar > 31)) {
+            console.log('Os dias para buscar deve estar entre 1 e 31');
+            return;
         }
-    
+
         document.body.removeChild(dialogo);
-    
+
         const dataInicialFormatada = converterStringParaData(dataInicial);
         const dataFinalFormatada = converterStringParaData(dataFinal);
-    
+
         const barraProgresso = criarBarraProgresso();
-    
-        // Chame gerarRequisicoes com a data de corte como parâmetro
+
         if (diasBuscar && diasBuscar <= 31) {
             gerarRequisicoes(dataInicialFormatada, dataFinalFormatada, 0, dataCorteSolicitacao, barraProgresso, diasBuscar);
         } else {
@@ -452,8 +375,7 @@ const criarDialogoData = async () => {
         barraProgresso.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.2)';
         barraProgresso.style.zIndex = '9999';
         barraProgresso.style.fontSize = '17px';
-        
-        // Cria o cabeçalho da barra de progresso para movimentação
+
         const barraProgressoHeader = document.createElement('div');
         barraProgressoHeader.style.cursor = 'move';
         barraProgressoHeader.style.padding = '10px';
@@ -462,18 +384,18 @@ const criarDialogoData = async () => {
         barraProgressoHeader.style.borderTopLeftRadius = '25px';
         barraProgressoHeader.style.borderTopRightRadius = '25px';
         barraProgresso.appendChild(barraProgressoHeader);
-    
+
         const progressoTexto = document.createElement('span');
         progressoTexto.textContent = 'Progresso: 0%';
         progressoTexto.style.display = 'inherit';
         progressoTexto.style.marginBottom = '3px';
-    
+
         const progressBar = document.createElement('div');
         progressBar.style.width = '0%';
         progressBar.style.height = '20px';
         progressBar.style.background = 'rgb(38 229 4 / 79%)';
         progressBar.style.borderRadius = '10px';
-    
+
         const botaoFechar = document.createElement('button');
         botaoFechar.textContent = 'X';
         botaoFechar.style.position = 'absolute';
@@ -488,7 +410,7 @@ const criarDialogoData = async () => {
         botaoFechar.addEventListener('click', () => {
             document.body.removeChild(barraProgresso);
         });
-    
+
         barraProgresso.appendChild(progressoTexto);
         barraProgresso.appendChild(progressBar);
         barraProgresso.appendChild(botaoFechar);
@@ -496,26 +418,25 @@ const criarDialogoData = async () => {
         document.body.appendChild(barraProgresso);
 
         const linhaSucesso = document.createElement('div');
-        linhaSucesso.textContent = 'Total de requisições bem-sucedidas: ' + totalRequisicoesBemSucedidas;        
+        linhaSucesso.textContent = 'Total de requisições bem-sucedidas: ' + totalRequisicoesBemSucedidas;
         barraProgresso.appendChild(linhaSucesso);
-    
+
         const linhaErro = document.createElement('div');
-        linhaErro.textContent = 'Já existe um pedido do mesmo tipo. Total : ' + totalRequisicoesComErro; // Adiciona o total de requisições com erro
+        linhaErro.textContent = 'Já existe um pedido do mesmo tipo. Total : ' + totalRequisicoesComErro;
         barraProgresso.appendChild(linhaErro);
 
         const linha72RequestAtingida = document.createElement('div');
         linha72RequestAtingida.textContent = 'Total de requisições dia atingido 72. Solicitações com erro :' + totalAtingido;
         barraProgresso.appendChild(linha72RequestAtingida);
-    
+
         const atualizarProgresso = (percentual) => {
             progressBar.style.width = percentual + '%';
             progressoTexto.textContent = 'Progresso: ' + percentual + '%';
-            // Atualiza requisições com erro 
             linhaSucesso.textContent = 'Total de requisições bem-sucedidas: ' + totalRequisicoesBemSucedidas;
             linhaErro.textContent = 'Já existe um pedido do mesmo tipo, total :' + totalRequisicoesComErro;
             linha72RequestAtingida.textContent = 'Total de requisições por dia atingido 72 request. Solicitações com erro : ' + totalAtingido;
         };
-    
+
         tornarDialogoMovel(barraProgresso, barraProgressoHeader);
         return atualizarProgresso;
     };
@@ -549,24 +470,20 @@ const criarDialogoData = async () => {
 
     document.body.appendChild(dialogo);
 
-    // Função para tornar um elemento móvel ao clicar e arrastar o cabeçalho
     function tornarDialogoMovel(dialogo, dialogoHeader) {
         let posicaoInicialX, posicaoInicialY, posicaoFinalX, posicaoFinalY;
         let dragAtivo = false;
 
-        // Adiciona evento de mouse pressionado no cabeçalho
         dialogoHeader.addEventListener('mousedown', (e) => {
             dragAtivo = true;
             posicaoInicialX = e.clientX;
             posicaoInicialY = e.clientY;
         });
 
-        // Adiciona evento de mouse solto
         document.addEventListener('mouseup', () => {
             dragAtivo = false;
         });
 
-        // Adiciona evento de mouse movendo
         document.addEventListener('mousemove', (e) => {
             if (dragAtivo) {
                 e.preventDefault();
@@ -580,14 +497,12 @@ const criarDialogoData = async () => {
         });
     }
 
-    // Chama a função para tornar a dialogBox móvel
     tornarDialogoMovel(dialogo, dialogoHeader);
 
     if (dataFormatadaFinal) {
         inputDataInicial.value = dataFormatadaFinal;
         inputDataFinal.value = dataCorteSolicitacao;
 
-        // Se os campos já estiverem preenchidos, permita pressionar Enter
         const verificarEnterPress = (event) => {
             if (event.key === 'Enter') {
                 botaoSolicitar.click();
@@ -595,29 +510,14 @@ const criarDialogoData = async () => {
         };
         document.addEventListener('keydown', verificarEnterPress);
     }
-
-    // Chama a função para começar a verificar
-    verificarBotaoRenovarSessao();
-
-    // Adiciona eventos de teclado para executar o botão ao pressionar Enter
-    const executarAoPressionarEnter = (event) => {
-        if (event.key === 'Enter') {
-            botaoSolicitar.click();
-        }
-    };
-
-    inputDataInicial.addEventListener('keydown', executarAoPressionarEnter);
-    inputDataFinal.addEventListener('keydown', executarAoPressionarEnter);
-    inputDiasBuscar.addEventListener('keydown', executarAoPressionarEnter);
 };
 
 const gerarRequisicoes = async (dataInicial, dataFinal, mesesBuscar, dataCorte, atualizarProgresso, diasBuscar = 0) => {
     let dataInicio = new Date(dataInicial);
     let dataFim = new Date(dataFinal);
-    
-    // Verifica se a data de final é maior que a data de corte
-    if (dataFim > dataCorte) {
-        dataFim = dataCorte;
+
+    if (dataFim > converterStringParaData(dataCorte)) {
+        dataFim = converterStringParaData(dataCorte);
     }
 
     const intervaloDias = diasBuscar > 0 ? diasBuscar : 30 * mesesBuscar;
@@ -625,14 +525,10 @@ const gerarRequisicoes = async (dataInicial, dataFinal, mesesBuscar, dataCorte, 
     const totalDias = Math.ceil((dataFim - dataInicio) / (1000 * 60 * 60 * 24));
 
     let percentual = 0;
-
-    // Ajuste para garantir que o número total de requisições seja arredondado para cima
     const totalRequisicoes = Math.ceil(totalDias / intervaloDias);
-
     let requestsConcluidas = 0;
 
-    // Garante que a data fim não vai ser ultrapassada
-    if (dataFinalRequisicao > dataFim){
+    if (dataFinalRequisicao > dataFim) {
         dataFinalRequisicao = dataFim;
     }
 
@@ -642,7 +538,6 @@ const gerarRequisicoes = async (dataInicial, dataFinal, mesesBuscar, dataCorte, 
         promises.push(fazerRequisicaoPOST(dataInicio, dataFinalRequisicao, () => {
             requestsConcluidas++;
             percentual = Math.ceil((requestsConcluidas / totalRequisicoes) * 100);
-            // Limita o percentual a 100%
             if (percentual > 100) {
                 percentual = 100;
             }
@@ -657,70 +552,17 @@ const gerarRequisicoes = async (dataInicial, dataFinal, mesesBuscar, dataCorte, 
 
     await Promise.all(promises);
 
-    // Corrige o percentual para 100% ao finalizar todas as requisições
     percentual = 100;
     atualizarProgresso(percentual);
-    
-    // Espera 10 segundos antes de chamar a função salvarRespostas()
-    setTimeout(() => {
-        salvarRespostas();
-    }, 10000); // 10000 milissegundos = 10 segundos
-    
-};
 
-
-const converterStringParaData = (dataString) => {
-    // Divide a string da data em dia, mês e ano
-    const partes = dataString.split('/');
-    const dia = parseInt(partes[0], 10);
-    const mes = parseInt(partes[1], 10);
-    const ano = parseInt(partes[2], 10);
-
-    // Cria uma nova string no formato "AAAA-MM-DD"
-    const dataFormatada = `${ano}-${mes}-${dia}`;
-
-    // Retorna o objeto Date criado a partir da nova string formatada
-    return new Date(dataFormatada);
+    setTimeout(salvarRespostas, 10000);
 };
 
 const dataDeCorteSolicitacoes = () => {
-    const dataCorteSolicitacao = document.getElementsByClassName('alert alert-info');
-    const dataCorte = dataCorteSolicitacao[0].innerText;
+    const dataCorteSolicitacao = document.getElementsByClassName('alert alert-info')[0]?.innerText;
     const regex = /(\d{2}\/\d{2}\/\d{4})/;
-    const matches = dataCorte.match(regex);
-    if (matches && matches.length > 0) {
-        return matches[0];
-    } else {
-        return null;
-    }
+    return dataCorteSolicitacao.match(regex)?.[0] || null;
 };
-
-function verificarBotaoRenovarSessao() {
-    // Obtém o elemento do temporizador da sessão
-    const temporizadorSessao = document.querySelector('.tempo-sessao.countdown');
-
-    if (temporizadorSessao) {
-        // Extrai os minutos e segundos do temporizador
-        const tempoRestante = temporizadorSessao.textContent.trim().split(':');
-        const minutos = parseInt(parseInt(tempoRestante[0]), 10);
-        const segundos = parseInt(parseInt(tempoRestante[1]) + 10 , 10); // adiciona 10 segundos pois 
-
-        console.log('Sessão será renovada automaticamente daqui : ' + minutos + 'min ' + segundos + 'seg. ');
-
-        // Calcula o tempo total em segundos
-        const tempoTotalSegundos = minutos * 60 + segundos;
-
-        // Define o intervalo de verificação com base no tempo restante na sessão
-        const interval = setInterval(() => {
-            const botaoRenovarSessao = document.getElementById('btnRenovarSessao');
-            if (botaoRenovarSessao) {
-                // Se o botão for encontrado, clique nele
-                botaoRenovarSessao.click();
-                clearInterval(interval); // Para de verificar após clicar no botão
-            }
-        }, tempoTotalSegundos * 1000); // Verifica após o tempo total em segundos
-    }
-}
 
 // Chama DialogBox
 criarDialogoData();
