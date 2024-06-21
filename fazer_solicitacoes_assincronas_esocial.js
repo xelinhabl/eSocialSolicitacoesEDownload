@@ -307,7 +307,7 @@ const criarDialogoData = async () => {
     botaoSolicitar.style.color = '#fff';
 
     const labelMesesBuscar = document.createElement('label');
-    labelMesesBuscar.textContent = 'Meses a Buscar: ';
+    labelMesesBuscar.textContent = 'Intervalo de tempo em Meses: ';
     const selectMesesBuscar = document.createElement('select');
     selectMesesBuscar.id = 'mesesBuscarInput';
     selectMesesBuscar.style.marginRight = '40px';
@@ -330,6 +330,16 @@ const criarDialogoData = async () => {
     inputDiasBuscar.min = '1';
     inputDiasBuscar.max = '31';
 
+    const quebraDeLinha10 = document.createElement('br');
+    const quebraDeLinha11 = document.createElement('br');
+
+    const labelMesesPular = document.createElement('label');
+    labelMesesPular.textContent = 'Informe meses que NÃO deve ser solicitado, mais de um sepado por ";". Formato esperado MM/AAAA: ';
+    const inputMesesPular = document.createElement('input');
+    inputMesesPular.type = 'string';
+    inputMesesPular.id = 'mesesPular';
+    inputMesesPular.style.marginRight = '40px';
+
     const quebraDeLinha6 = document.createElement('br');
 
     botaoSolicitar.addEventListener('click', () => {
@@ -337,6 +347,9 @@ const criarDialogoData = async () => {
         const dataFinal = document.getElementById('dataFinalInput').value;
         const mesesBuscar = document.getElementById('mesesBuscarInput').value;
         const diasBuscar = document.getElementById('diasBuscarInput').value;
+        const mesesPular = document.getElementById('mesesPular').value;
+        const mesesPularArray = mesesPular.split(";");
+
 
         if (!dataInicial || !dataFinal) {
             alert('Por favor, informe ambas as datas.');
@@ -356,9 +369,9 @@ const criarDialogoData = async () => {
         const barraProgresso = criarBarraProgresso();
 
         if (diasBuscar && diasBuscar <= 31) {
-            gerarRequisicoes(dataInicialFormatada, dataFinalFormatada, 0, dataCorteSolicitacao, barraProgresso, diasBuscar);
+            gerarRequisicoes(dataInicialFormatada, dataFinalFormatada, 0, dataCorteSolicitacao, mesesPularArray, barraProgresso, diasBuscar);
         } else {
-            gerarRequisicoes(dataInicialFormatada, dataFinalFormatada, mesesBuscar, dataCorteSolicitacao, barraProgresso);
+            gerarRequisicoes(dataInicialFormatada, dataFinalFormatada, mesesBuscar, dataCorteSolicitacao, mesesPularArray, barraProgresso);
         }
     });
 
@@ -425,16 +438,16 @@ const criarDialogoData = async () => {
         linhaErro.textContent = 'Já existe um pedido do mesmo tipo. Total : ' + totalRequisicoesComErro;
         barraProgresso.appendChild(linhaErro);
 
-        const linha72RequestAtingida = document.createElement('div');
-        linha72RequestAtingida.textContent = 'Total de requisições dia atingido 72. Solicitações com erro :' + totalAtingido;
-        barraProgresso.appendChild(linha72RequestAtingida);
+        const linha100RequestAtingida = document.createElement('div');
+        linha100RequestAtingida.textContent = 'Total de requisições dia atingido 100. Solicitações com erro :' + totalAtingido;
+        barraProgresso.appendChild(linha100RequestAtingida);
 
         const atualizarProgresso = (percentual) => {
             progressBar.style.width = percentual + '%';
             progressoTexto.textContent = 'Progresso: ' + percentual + '%';
             linhaSucesso.textContent = 'Total de requisições bem-sucedidas: ' + totalRequisicoesBemSucedidas;
             linhaErro.textContent = 'Já existe um pedido do mesmo tipo, total :' + totalRequisicoesComErro;
-            linha72RequestAtingida.textContent = 'Total de requisições por dia atingido 72 request. Solicitações com erro : ' + totalAtingido;
+            linha100RequestAtingida.textContent = 'Total de requisições por dia atingido 100 request. Solicitações com erro : ' + totalAtingido;
         };
 
         tornarDialogoMovel(barraProgresso, barraProgressoHeader);
@@ -464,6 +477,10 @@ const criarDialogoData = async () => {
     dialogo.appendChild(labelDiasBuscar);
     dialogo.appendChild(inputDiasBuscar);
     dialogo.appendChild(quebraDeLinha6);
+    dialogo.appendChild(quebraDeLinha11);
+    dialogo.appendChild(labelMesesPular);
+    dialogo.appendChild(inputMesesPular);
+    dialogo.appendChild(quebraDeLinha10);
     dialogo.appendChild(botaoSolicitar);
     dialogo.appendChild(quebraDeLinha5);
     dialogo.appendChild(linhaInformativa);
@@ -512,7 +529,7 @@ const criarDialogoData = async () => {
     }
 };
 
-const gerarRequisicoes = async (dataInicial, dataFinal, mesesBuscar, dataCorte, atualizarProgresso, diasBuscar = 0) => {
+const gerarRequisicoes = async (dataInicial, dataFinal, mesesBuscar, dataCorte, mesesPular, atualizarProgresso, diasBuscar = 0) => {
     let dataInicio = new Date(dataInicial);
     let dataFim = new Date(dataFinal);
 
@@ -535,15 +552,30 @@ const gerarRequisicoes = async (dataInicial, dataFinal, mesesBuscar, dataCorte, 
     const promises = [];
 
     while (dataInicio < dataFim) {
-        promises.push(fazerRequisicaoPOST(dataInicio, dataFinalRequisicao, () => {
-            requestsConcluidas++;
-            percentual = Math.ceil((requestsConcluidas / totalRequisicoes) * 100);
-            if (percentual > 100) {
-                percentual = 100;
+        const { pularMes, dataFinalAjustada } = verificaPularMeses(mesesPular, dataInicio, dataFinalRequisicao);
+
+        if (pularMes) {
+            if (dataFinalAjustada) {
+                dataFinalRequisicao = dataFinalAjustada;
+                // Ajustar dataInicio para o próximo mês após o ajuste
+                dataInicio = new Date(dataFinalRequisicao.getFullYear(), dataFinalRequisicao.getMonth() + 1, 1);
+            } else {
+                // Pular o intervalo inteiro
+                dataInicio = new Date(dataFinalRequisicao.getTime() + (24 * 60 * 60 * 1000));
             }
-            atualizarProgresso(percentual);
-        }));
-        dataInicio = new Date(dataFinalRequisicao.getTime() + (24 * 60 * 60 * 1000));
+        } else {
+            promises.push(fazerRequisicaoPOST(dataInicio, dataFinalRequisicao, () => {
+                requestsConcluidas++;
+                percentual = Math.ceil((requestsConcluidas / totalRequisicoes) * 100);
+                if (percentual > 100) {
+                    percentual = 100;
+                }
+                atualizarProgresso(percentual);
+            }));
+            dataInicio = new Date(dataFinalRequisicao.getTime() + (24 * 60 * 60 * 1000));
+        }
+
+        // Recalcular dataFinalRequisicao para o próximo intervalo
         dataFinalRequisicao = new Date(dataInicio.getTime() + intervaloDias * 24 * 60 * 60 * 1000);
         if (dataFinalRequisicao > dataFim) {
             dataFinalRequisicao = dataFim;
@@ -556,6 +588,27 @@ const gerarRequisicoes = async (dataInicial, dataFinal, mesesBuscar, dataCorte, 
     atualizarProgresso(percentual);
 
     setTimeout(salvarRespostas, 10000);
+};
+
+const verificaPularMeses = (mesesPular, dataInicio, dataFim) => {
+    for (let data of mesesPular) {
+        let [mes, ano] = data.split("/").map(Number);
+        let dataCompararInicio = new Date(ano, mes - 1, 1); // Primeiro dia do mês
+        let dataCompararFim = new Date(ano, mes, 0); // Último dia do mês
+
+        if (dataCompararInicio <= dataFim && dataCompararFim >= dataInicio) {
+            // Data está dentro do intervalo de dataInicio e dataFim
+            if (dataCompararInicio <= dataInicio && dataCompararFim >= dataFim) {
+                return { pularMes: true };
+            } else if (dataCompararInicio <= dataInicio && dataCompararFim <= dataFim) {
+                let ultimoDiaMesInicio = new Date(dataInicio.getFullYear(), dataInicio.getMonth() + 1, 0);
+                return { pularMes: true, dataFinalAjustada: ultimoDiaMesInicio };
+            } else if (dataCompararInicio >= dataInicio && dataCompararInicio <= dataFim) {
+                return { pularMes: true, dataFinalAjustada: dataCompararFim };
+            }
+        }
+    }
+    return { pularMes: false };
 };
 
 const dataDeCorteSolicitacoes = () => {
