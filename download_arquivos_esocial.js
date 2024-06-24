@@ -205,7 +205,19 @@ const criarDialogoData = () => {
 
     // Adiciona a caixa de diálogo ao corpo do documento
     document.body.appendChild(dialogo);
+    dataInicialEFinal = dataDeHojeParaString();
+    document.getElementById('dataFinalInput').value = dataInicialEFinal;
+    document.getElementById('dataInicialInput').value = dataInicialEFinal;
 };
+
+function dataDeHojeParaString() {
+    const hoje = new Date();
+    const ano = hoje.getFullYear();
+    const mes = String(hoje.getMonth() + 1).padStart(2, '0'); // Meses são de 0 a 11
+    const dia = String(hoje.getDate()).padStart(2, '0');
+
+    return `${dia}${mes}${ano}`;
+}
 
 const buscarDados = (dataSolicitacaoInicial, dataSolicitacaoFinal, baixarTudo) => {
     // Obtém a data de hoje no formato DD/MM/AAAA
